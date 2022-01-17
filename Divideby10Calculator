@@ -53,9 +53,8 @@ LOOP
 	BRnzp LOOP		; Result: R3 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Beta Testing
-; Divide the content of R2 by 2 first
-; Just add the content for 15 times 
+; Counte how many times can 10 be subtracted
+; It will discard the remainders 
 
 Divide 
 	AND R2, R2, #0 
