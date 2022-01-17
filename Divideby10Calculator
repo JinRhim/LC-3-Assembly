@@ -1,0 +1,165 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LC-3 Assembly Program - Jin Chul, Rhim 
+; This program will receive user input and return the value divided by 10. Remainder will be ignored
+; user input and output will be in decimal  
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	.ORIG x3000
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+UserInputPtr .BLKW 6
+ResultPtr .BLKW 6 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+Begin 	LEA R0, Prompt 		; R0 = beginning of prompt 
+	puts 
+	LD R5, AsciiN		; R5 = -x30 
+	LEA R6, UserInputPtr	; R6 = beginning of UserInputPtr 
+
+READ	getc 
+	out 
+	ADD R3, R0, x-A		; Check Enter Key 
+	BRz ADDNull 
+	ADD R0, R0, R5		; Ascii --> Decimal (UserInput-x30)
+	STR R0, R6, #0 		; Store R0 at UserInputPtr 
+	ADD R6, R6, #1 		; Increase pointer by 1 
+	BRnzp READ		; if no enter key, keep getting user input
+
+ADDNull
+	STR R0, R6, #0		; R0 = xA. store xA at end of string 
+	AND R1, R1, #0
+	AND R3, R3, #0 
+	BRnzp ParseDecimal 	
+
+ParseDecimal 
+	JSR WIPE
+	LEA R6, UserInputPtr 	; R6 = User Input Pointer
+	BRnzp LOOP 	
+
+LOOP 
+	LDR R1, R6, #0 		; R1 = first letter 
+	ADD R2, R1, x-A 	; Check whether the letter is enter key or not
+	BRz Divide 
+	AND R2, R2, #0 
+
+	ADD R7, R3, R3		; R7 = 2R3 
+	ADD R3, R7, R7		; R3 = 4R3 
+	ADD R3, R3, R3		; R3 = 8R3 
+	ADD R3, R3, R7		; R3 = 8R3 + 2R3 
+
+	ADD R3, R3, R1 
+	ADD R6, R6, #1 		; Increase Pointer 
+	BRnzp LOOP		; Result: R3 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Beta Testing
+; Divide the content of R2 by 2 first
+; Just add the content for 15 times 
+
+Divide 
+	AND R2, R2, #0 
+Subtr0	ADD R2, R2, #1 		; Counter how many times can we subtract 10 
+	ADD R3, R3, x-A 
+	BRzp Subtr0
+	ADD R2, R2, #-1 
+	BRnzp DecimalTemplate 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Save the value of R2 in ResultPtr as a decimal 
+
+DecimalTemplate			; Print Value of R2 in decimal 
+	
+	LD R6, AsciiP		; R6 = x30 	 
+	LEA R4, ResultPtr 	; R4 = Savepoint 
+				; R5 = digit counter 
+				; R7 = Base 10 constants
+
+	LD R7, NTenThousand 	; R7 = -10,000
+Subtr1	ADD R5, R5, #1 		; R5 = n*10,000 digit 
+	ADD R2, R2, R7		; Subtract 10,000 several times from R2 
+	BRzp Subtr1 		; if R2 is negative, end of loop 
+	ADD R5, R5, #-1 	; subtract excessive 1 
+	ADD R5, R5, R6 		; change n*10,000 digit into Ascii 
+	STR R5, R4, #0 		; Store R5 to R4
+	ADD R4, R4, #1 		; increase savepoint by 1 
+
+	AND R5, R5, #0 
+	LD R7, PTenThousand 	
+	ADD R2, R2, R7 		; ADD Positive 10,000 to compensate 
+
+	LD R7, NThousand 	; Loop for 1000
+Subtr2  ADD R5, R5, #1 
+	ADD R2, R2, R7 
+	BRzp Subtr2 
+	ADD R5, R5, #-1 
+	ADD R5, R5, R6
+	STR R5, R4, #0 
+	ADD R4, R4, #1 
+
+	AND R5, R5, #0 
+	LD R7, PThousand 
+	ADD R2, R2, R7 
+
+	LD R7, NHundred 	; Loop for 100 
+Subtr3 	ADD R5, R5, #1 		
+	ADD R2, R2, R7
+	BRzp Subtr3
+	ADD R5, R5, #-1 
+	ADD R5, R5, R6 
+	STR R5, R4, #0 
+	ADD R4, R4, #1 		; increase pointer by 1 
+
+	AND R5, R5, #0 
+	LD R7, PHundred 	; R7 = #100 
+	ADD R2, R2, R7 
+	
+Subtr4 	ADD R5, R5, #1 
+	ADD R2, R2, x-A 	; Subtract 10 
+	BRzp Subtr4
+	ADD R5, R5, #-1
+	ADD R5, R5, R6		; Convert to Ascii Template 
+	STR R5, R4, #0 
+
+	ADD R2, R2, #10 
+
+	ADD R2, R2, R6 
+	ADD R4, R4, #1 
+	STR R2, R4, #0 		; The last digit is R1. 
+
+	BRnzp PrintDecimal
+
+PrintDecimal	
+	LEA R0, Prompt2 
+	puts 
+	LEA R0, ResultPtr 
+	puts 
+	BRnzp Begin
+
+;;;;;;;;;;;;;WIPE Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+WIPE 	AND R0, R0, #0 
+	AND R1, R1, #0
+	AND R2, R2, #0 
+	AND R3, R3, #0
+	AND R4, R4, #0 
+	AND R5, R5, #0 
+	AND R6, R6, #0 
+	RET
+
+;;;;;;;;;;;; DATA ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+AsciiN .fill x-30	; Ascii conversion  
+AsciiP .fill x30 	; Ascii conversion 
+
+NTenThousand .fill #-10000
+PTenThousand .fill #10000
+NThousand .fill #-1000 
+PThousand .fill #1000 
+NHundred .fill #-100 
+PHundred .fill #100 
+
+Prompt .STRINGZ "\nEnter the number: " 
+Prompt2 .STRINGZ "Result: "
+
+.END
