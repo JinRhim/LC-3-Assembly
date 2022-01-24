@@ -1,0 +1,307 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; LC-3 Assembly Program - Jin Chul, Rhim 
+; This program will receive user input as decimal or hex and convert it to binary 
+; Negative numbers have to start with '-' signs 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	.ORIG x3000
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+UserInputPtr .BLKW 6
+Save1 .BLKW 1 
+Save2 .BLKW 1 
+Save3 .BLKW 1 			; final parsed number
+NPIndicator .BLKW 1 		; Positive = 0 Negative = 1 
+
+Prompt .STRINGZ "\nEnter the Hex or Decimal \n If Hex, put x in front: " 
+Prompt2 .STRINGZ "Result: "
+Prompt3 .STRINGZ "You Entered: "
+
+;;;;;;;;;;;; DATA ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+Begin 	AND R0, R0, #0
+	ST R0, NPIndicator
+	LEA R0, Prompt 		; R0 = beginning of prompt 
+	puts 
+	LEA R6, UserInputPtr	; R6 = beginning of UserInputPtr 
+
+READ	getc 
+	out 
+	ADD R3, R0, x-A		; Check Enter Key 
+	BRz ADDNull 
+	STR R0, R6, #0 		; Store R0 at UserInputPtr 
+	ADD R6, R6, #1 		; Increase pointer by 1 
+	BRnzp READ		; if no enter key, keep getting user input
+
+ADDNull
+	STR R0, R6, #0		; R0 = xA. store xA at end of string 
+	BRnzp CAPITALIZE		; Subroutine for capitalizing letters
+
+CAPITALIZE 
+	LEA R6, UserInputPtr
+LOOP1 	LDR R1, R6, #0
+	AND R2, R2, #0
+	ADD R2, R1, x-A		; Check for enter key. If enter key, end loop
+	BRz Print 
+	AND R2, R2, #0
+	LD R5, AsciiL 		; R5 = x-61
+	ADD R2, R1, R5		
+	BRn SKIPConvert		; IF user input is higher than ASCII x61, convert them into Lowercase.
+	LD R5, AsciiC 		; R5 = x-20 
+	ADD R1, R1, R5		; Convert Lower -> Upper   
+	
+SKIPConvert
+	STR R1, R6, #0 		
+	ADD R6, R6, #1		; Increase pointer 
+	BRnzp LOOP1
+
+Print 
+	LEA R0, Prompt3		
+	puts 
+	LEA R0, UserInputPtr	
+	puts 
+	BRnzp ParseNum	
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Sorting User Input 	
+; Find out whether the Memory values which saved user inputs are decimal or hex 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ParseNum
+	AND R2, R2, #0 
+	AND R7, R7, #0 
+	LEA R6, UserInputPtr 	; R6 = User Input Pointer
+	LD R5, MinusSign 	; R5 = Ascii '-'
+	LDR R1, R6, #0 		; R1 = first letter 
+	ADD R2, R1, R5		; test whether first letter is negative or not
+	BRnp SKIP3 
+	ADD R7, R7, #1 
+	ST R7, NPIndicator	; If negative, NPIndicator = 1 
+	ADD R6, R6, #1		; Increase pointer by 1 
+SKIP3	LD R5, xSign 		; R5 = Ascii 'x'
+	AND R2, R2, #0 
+	LDR R1, R6, #0
+	ADD R2, R1, R5		; Check whether the letter is x sign or not 
+	BRz ParseHex	
+	BRnp ParseDecimal 
+
+	; R7 = Positive/Negative Indicator. 0 = P / 1 = N 
+	; R6 = Pointer to the number 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Parsing Hex Part
+; Hex can be x1 ~ x9 or xA ~ xF
+; x1 ~ x9 = ProcessDigit Loop 
+; xA ~ xF = ProcessAlphabet Loop 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ParseHex 
+	LEA R0, HexStr
+	PUTS
+	AND R3, R3, #0	
+	ADD R6, R6, #1 		; Increase pointer by 1 because the first letter is 'X'	 
+
+HexLoop	LDR R1, R6, #0		; Get first digit of hex without '-' or 'X' signs 
+	AND R0, R0, #0
+	ADD R0, R1, x-A		; Check for enter sign 
+	BRz NPChecker		; If end of Hex numbers --> EndofHex 
+	AND R0, R0, #0
+	LD R7, AsciiZero	; R7 = '0' / x-30
+	ADD R0, R1, R7		; check whether it is zero or not 
+	BRn	ErrorMsg	; if ascii less than 0 --> error message 
+	AND R0, R0, #0 
+	LDR R1, R6, #0
+	LD R7, ASciiNine 	; R7 = ascii '9' x-39
+	ADD R0, R1, R7		; If number is smaller than 9 process decimal 
+	BRnz ProcessDigit	; x1 ~ x9 Parsing...
+	BRp ProcessAlphabet	; xA ~ xF Parsing...
+
+ProcessDigit 
+	LEA R0, ProcessDigitStr 	
+	puts 
+	LD R7, AsciiN		; R7 = x-30. 
+	ADD R1, R1, R7		; Convert Ascii table--> decimal 
+	
+	; Multiply R3 by 16 
+	ADD R3, R3, R3 		; R3 = 2 R3 
+	ADD R3, R3, R3		; R3 = 4R3 
+        ADD     R3, R3, R3      ; R3 = 8*R3
+        ADD     R3, R3, R3      ; R3 = 8*R3 + 8*R3 = 16*R3
+	
+	ADD R3, R3, R1 		; Add the current number to R3 
+	ADD R6, R6, #1		; Increase Pointer to get next digit or alphabet 
+	BRnzp HexLoop 
+	
+ProcessAlphabet 
+	LEA R0, ProcessAlphabetStr 
+	puts 
+
+	AND R7, R7, #0 
+	ADD R7, R7, #10 	; R7 = 10 
+	
+	LD R5, NegA  		; R5 = x-41 (A)
+	ADD R1, R1, R5 		; R1 = userinput - x41 
+	BRz SKIP1 		; R7 = A 10 
+	ADD R7, R7, #1 			
+	ADD R1, R1, #-1		; R1 = x42 (B) 
+	BRz SKIP1 		; R7 = B 11 	
+	ADD R7, R7, #1 
+	ADD R1, R1, #-1 	; R1 = x43 (C)	 
+	BRz SKIP1 		; R7 = C 12 
+	ADD R7, R7, #1 
+	ADD R1, R1, #-1		; R1 = x44 (D)
+	BRz SKIP1		; R7 = D 13 
+	ADD R7, R7, #1 
+	ADD R1, R1, #-1		; R1 = x45 (E) 				 
+	BRz SKIP1  		; R7 = E 14 
+	ADD R7, R7, #1 
+	ADD R1, R1, #-1		; R1 = x46 (F) 	
+	BRz SKIP1 		; R7 = F 15 
+	
+	LEA R2, Save2
+	STR R7, R2, #0 		; debugging pointer 
+	
+	BRnp ErrorMsg 		
+
+SKIP1 	ADD R3, R3, R3 		; R3 = 2 R3 
+	ADD R3, R3, R3		; R3 = 4R3 
+        ADD     R3, R3, R3      ; R3 = 8*R3
+        ADD     R3, R3, R3      ; R3 = 8*R3 + 8*R3 = 16*R3
+	
+	ADD R3, R3, R7 		; Add the number to R3 
+	ADD R6, R6, #1		; Increase pointer to get next digit / alphabet  		
+	BRnzp HexLoop 
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Parsing Decimal Part. 1 ~ 9		 			;
+; The sum will be saved in R3					;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ParseDecimal			; R6 = user input pointer 
+	LEA R0, ProcessDecimalStr 	
+	PUTS 
+	AND R3, R3, #0 
+	LD R5, AsciiN		; R5 = x-30
+DecimalLoop
+	LDR R1, R6, #0 		; R1 = M[UserinputPtr]
+	ADD R2, R1, x-A		; Check for enter sign. If enter sign --> DoneParsingDecimal
+	BRz NPChecker 
+	AND R2, R2, #0 
+
+	;; Multiply R3 by 10
+        ADD R7, R3, R3      ; R7 = 2*R3
+        ADD R3, R7, R7      ; R3 = 4*R3
+        ADD R3, R3, R3      ; R3 = 8*R3
+        ADD R3, R3, R7      ; R3 = 8*R3 + 2*R3 = 10*R3
+	
+	;; Translate new digit from Ascii to int and add to R3 
+
+	ADD R1, R1, R5		; R1 = Ascii to int 
+	ADD R3, R3, R1		; ADD new digit to R3 
+	ADD R6, R6, #1		; Increase Pointer
+	BRnzp DecimalLoop 
+	
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Check whether the decimal or hex is negative or not 
+; NPIndicator = 0 --> Positive 
+; NPIndicator = 1 --> Negative 
+; If negative, flip R3 and add 1 in order to make it negative
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	
+NPChecker 
+	LD R7, NPIndicator	; Check whether the num is negative or positive 
+	ADD R7, R7, #0		
+	BRnz PrintResult 
+	Not R3, R3		; Because the R3 sum is negative, flip binary num and ADD 1 
+	ADD R3, R3, #1	
+	BRnzp PrintResult 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; PrintResult 							;
+; Print the value of R3 in binary  				;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ 
+PrintResult 
+	LEA R7, Save3
+	STR R3, R7, #0				; Debugging purpose. 
+	LEA R0, AnswerStr 			; final number to be printed will be save at R3 
+	PUTS	
+
+	AND R2, R2, #0
+	ADD R2, R2, #15 			; COUNTER R2 = SET 15	 
+BINARY 	ADD R3, R3, #0
+	BRzp PRINT0
+	BRn PRINT1
+RETURN	ADD R3, R3, R3				; R4 = 2*R4 
+	ADD R2, R2, #-1 			
+	BRzp BINARY 
+
+	BRnzp Begin
+
+
+PRINT0  
+	LD R0, AsciiP	; R6 = x30 
+	OUT 
+	BRnzp RETURN
+
+PRINT1
+	LD R0, AsciiP 
+	ADD R0, R0, #1 
+	OUT
+	BRnzp RETURN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; Error Str 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ErrorMsg 
+	LEA R0, ErrorStr 
+	puts
+	BRnzp Begin
+
+ErrorStr .STRINGZ "\nInvalid Input!"
+
+;;;;;;;;;;;;;WIPE Subroutine;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+WIPE 	AND R0, R0, #0 
+	AND R1, R1, #0
+	AND R2, R2, #0 
+	AND R3, R3, #0
+	AND R4, R4, #0 
+	AND R5, R5, #0 
+	AND R6, R6, #0 
+	RET
+
+
+;;;;;;;;;;;; DATA ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+AsciiN .fill x-30	; Ascii conversion  
+AsciiP .fill x30 	; Ascii conversion 
+AsciiL .fill x-61	; Ascii Lowercase Testing Constant 
+AsciiC .fill x-20 	; Ascii Lowercase to Uppercase Conversion factor
+AsciiZero .fill x-30	; Ascii for '0' -> used for parsing hex
+ASciiNine .fill x-39	; Ascii for '9' -> used for parsing hex 
+
+NegA 	.fill x-41	; required for parsing hex
+NegB 	.fill x-42 
+NegC	.fill x-43
+NegD	.fill x-44 
+NegE	.fill x-45
+NegF 	.fill x-46
+
+MinusSign .fill x-2D 	; '-' ASCII
+xSign 	.fill x-58	; 'X' ASCII
+
+NTenThousand .fill #-10000
+PTenThousand .fill #10000
+NThousand .fill #-1000 
+PThousand .fill #1000 
+NHundred .fill #-100 
+PHundred .fill #100 
+
+HexStr .STRINGZ "Parsing Hex..."
+ProcessDigitStr .STRINGZ "\nParsing x1 ~ x9..."
+ProcessAlphabetStr .STRINGZ "\nParsing xA ~ xF..."
+ProcessDecimalStr .STRINGZ "Parsing 1 ~ 9..."
+AnswerStr .STRINGZ "\nBinary: "
+
+.END
