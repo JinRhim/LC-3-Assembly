@@ -1,23 +1,23 @@
 # LC-3-Assembly
 
-##HexDecimalBinaryCalculator 
-###This program will receive user input of decimal or hexadecimal numbers.
-###users can enter either negative or positive number by putting '-' in front
+## HexDecimalBinaryCalculator 
+### This program will receive user input of decimal or hexadecimal numbers.
+### users can enter either negative or positive number by putting '-' in front
 
-###Enter the number: 1 
-###Binary: 0000000000000001
+### Enter the number: 1 
+### Binary: 0000000000000001
 
-###Enter the number: -1 
-###Binary: 1111111111111111
+### Enter the number: -1 
+### Binary: 1111111111111111
 
-###Enter the number: xA 
-###Binary: 0000000000001010
+### Enter the number: xA 
+### Binary: 0000000000001010
 
-###Enter the number: xABC 
-###Binary: 0000101010111100
+### Enter the number: xABC 
+### Binary: 0000101010111100
 
-##Enter the number: x10
-###Bianry: 0000000000010000  
+### Enter the number: x10
+### Bianry: 0000000000010000  
 
 
 ## Divideby2Calculator 
